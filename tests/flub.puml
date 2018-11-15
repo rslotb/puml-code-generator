@@ -1,0 +1,8 @@
+@startuml
+class anotherclass {
+}
+@enduml
+@startuml
+class main {
+}
+@enduml

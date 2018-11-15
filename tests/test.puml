@@ -1,0 +1,30 @@
+@startuml
+
+/' a multiline
+  'dd
+comment
+'/
+
+namespace something {
+
+!define FINE class
+'!define FINER
+/'another comment here '/ note left of TestAttrributeNote
+This is a note that breaks
+end note
+
+    FINE TestAttrributeNote { /'another comment here '/
+    # attribute1 : string /'another comment here '/
+    # attribute2 : string
+    }
+
+    !ifdef FINER
+    FINE anotherclass {
+    # attribute3 : string
+    # attribute4 : string
+    }
+    !endif
+
+}
+
+@enduml

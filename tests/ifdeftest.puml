@@ -1,0 +1,55 @@
+@startuml
+
+!define FINE class
+!define FINER
+!define DEF
+
+    FINE There1 {
+    }
+
+    !ifdef FINER
+        FINE There2 {
+        }
+    !else
+        class NotThere1 {
+        }
+    !endif
+
+    !ifdef NDEF
+    class NotThere1 {
+    }
+      !ifdef FINE
+        class NotThere2 {
+        }
+      !else
+        class NotThere3 {
+        }
+      !endif
+
+    !else
+    FINE There3 {
+    }
+
+    !ifdef FINE
+        class There4 {
+        }
+    !else
+        class NotThere4 {
+        }
+
+    !endif
+    !ifdef DEF
+        class There5 {
+        }
+        !ifndef NDEF
+            class There6 {
+            }
+        !endif
+    !endif
+
+ !endif
+
+
+
+
+@enduml

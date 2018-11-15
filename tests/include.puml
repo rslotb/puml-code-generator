@@ -1,0 +1,9 @@
+@startuml
+
+!define DEF
+!include included.puml
+
+    class main {
+    }
+
+@enduml

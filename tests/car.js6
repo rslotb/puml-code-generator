@@ -1,0 +1,45 @@
+class Car {
+  constructor: function () {
+    this.model = undefined;
+    this.make = undefined;
+    this.year = undefined;
+  },
+  setModel: function (model) {},
+  setMake: function (make) {},
+  setYear: function (param0) {},
+  getModel: function () {},
+  getMake: function () {},
+  getYear: function () {}
+}
+
+
+class NamesInThings {
+  constructor: function () {
+    this.field = undefined;
+    this.field1 = undefined;
+    this._some_private = undefined;
+    this.field_2 = undefined;
+  },
+  member: function () {},
+  member2: function () {},
+  member3: function () {},
+  member_s: function () {}
+}
+
+
+class Toyota extends Car {
+}
+
+
+class Honda extends Car {
+}
+
+
+class Ford extends Car {
+}
+
+
+class Hyundai extends Car {
+}
+
+

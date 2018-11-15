@@ -1,0 +1,11 @@
+@startuml
+
+    !ifndef DEF
+    class theClass {
+     }
+    !else
+      class anotherclass {
+         }
+
+    !endif
+@enduml

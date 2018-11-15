@@ -1,0 +1,341 @@
+#!/usr/bin/env node
+
+var fs = require("fs");
+var hbs = require("handlebars");
+var preprocessor = require("./src/plantuml-preprocessor");
+var parser = require("./src/plantuml");
+var os = require("os");
+var Define = require("./src/Define");
+var EndIf = require("./src/EndIf");
+var Else = require("./src/Else");
+var IfDef = require("./src/IfDef");
+var Include = require("./src/Include");
+var Enumeration = require("./src/Enumeration");
+
+var path = require('path');
+
+var options = {
+  language: "coffeescript",
+  output: null
+};
+
+var supported_languages = ["coffeescript", "csharp", "ecmascript5", "ecmascript6", "java", "php", "ruby", "typescript","jsonapi-schema"];
+
+var args = process.argv.slice(2); // Trim "node" and the script path.
+
+if (args.length === 0) {
+  printUsage();
+} else {
+  convertFile(getArguments());
+}
+
+function printLanguages() {
+  supported_languages.forEach(function (item) {
+    console.log(item);
+  })
+  exitSuccess();
+}
+
+function printUsage() {
+  console.log("Usage: plantcode [options] <inputFile>");
+  console.log("");
+  console.log("Generates classfile(s) for the provided PlantUML file specified by <input_file> and writes to standard output.");
+  console.log("");
+  console.log("Options:");
+  console.log("  -l, --language <language>          name of the programming language");
+  console.log("                                     which the produced class files")
+  console.log("                                     will be written in");
+  console.log("  -o, --out <output_path>            the path to output the file(s) to");
+  console.log("      --show-languages               displays all the current supported");
+  console.log("                                     programming languages for use")
+  console.log("                                     for with the language option");
+  console.log("  -h, --help                         print help and exit");
+  exitSuccess();
+}
+
+function isValidLanguage(language) {
+  return supported_languages.indexOf(language) !== -1;
+}
+
+function getArguments() {
+
+  while (args.length > 0 && isOption(args[0])) {
+    switch (args[0]) {
+      case "-o":
+      case "--out":
+        nextArg();
+        if (args.length === 0) {
+          abort("Missing output directory or file for -o/--out option.");
+        }
+        options.output = args[0];
+        break;
+      case "-l":
+      case "--language":
+        nextArg();
+        if (args.length === 0) {
+          abort("Missing language of the -l/--language option.");
+        } else if (!isValidLanguage(args[0])) {
+          abort("Invalid language provided.");
+        }
+        options.language = args[0];
+        break;
+      case "--show-languages":
+        printLanguages();
+        break;
+      case "-h":
+      case "--help":
+        printUsage();
+        break;
+      default:
+        abort("Invalid option " + args[0]);
+        break;
+    }
+    nextArg();
+  }
+
+  switch (args.length) {
+    case 1:
+      options.input = args[0];
+    break;
+    default:
+      abort("No input file provided.");
+  }
+
+  return options;
+
+}
+
+function readFile(filename) {
+
+    try {
+
+        return fs.readFileSync(filename, {encoding: "UTF-8"});
+
+    }
+    catch (e) {
+        console.error("Unable to read input file: " + filename);
+    }
+
+}
+
+function convertFile(config) {
+
+  var data = readFile (config.input);
+  processInputFile(config, data);
+}
+
+function exitFailure() {
+  process.exit(1);
+}
+
+function exitSuccess() {
+  process.exit(0);
+}
+
+function abort(message) {
+  for (var i = 0, length = arguments.length; i < length; i++) {
+    console.error(arguments[i]);
+  }
+  exitFailure();
+}
+
+function isOption(arg) {
+  return (/^-/).test(arg);
+}
+
+function nextArg() {
+  args.shift();
+}
+
+function processDefine (value, key, map) {
+
+
+
+}
+
+
+//         data = data.replace(new RegExp(key, 'g'), value);
+
+function processInputFile(config, data) {
+
+  try {
+      const inputpath =  path.dirname(fs.realpathSync(config.input));
+
+      const blocks = preprocessor.parse(data);
+      const defines = new Map();
+      let processedData = "";
+      let debugData = "";
+      let lineNumber = 1;
+      let processCode = true;
+      let activeLevel = 0;
+      let currentLevel = 0;
+
+      for (let i = 0, length = blocks.length; i < length; i++) {
+
+        let block  = blocks[i];
+
+        //console.error(typeof block);
+
+        if (typeof block === "string" && processCode) {
+
+            defines.forEach(function(value, key, map){
+
+                block = block.replace(new RegExp('(^|\\s)'+key+'(?=\\s)', 'g')," " + value);
+            });
+            processedData += block + "\n";
+            debugData += lineNumber++ + ": " + block + "\n";
+        }
+        if (typeof block === "object") {
+          if (block instanceof Define) {
+
+            defines.set(block.getKey(),block.getValue());
+          }
+          if (block instanceof IfDef) {
+
+             currentLevel++;
+             if (processCode) {
+               activeLevel++;
+               processCode = block.isDef();
+               if (!defines.has(block.getKey())) {
+                 processCode = !processCode;
+               }
+             }
+          }
+          if (block instanceof Else) {
+            if (currentLevel === activeLevel) {
+
+                processCode = !processCode;
+            }
+
+          }
+          if (block instanceof EndIf) {
+
+            if (currentLevel === activeLevel) {
+                processCode = true;
+                activeLevel--;
+
+            }
+            currentLevel--;
+          }
+          if (block instanceof Include) {
+
+              const newBlocks = preprocessor.parse(readFile(path.format({ dir: inputpath, base: block.getFile()})));
+
+
+              blocks.splice(i,1,...newBlocks.slice(1,newBlocks.length-1)); // need to take our the begin/end umls.
+              length = blocks.length;
+              i--; //Because we want to process this block again, as we just replaced it. bit dirty, but now at least the array as a whole makes sense.
+          }
+        }
+    }
+    // var newData = "";
+    // var defineIndex = data.search('!define');
+    //
+    // while (defineIndex > 0) {
+    //
+    //     newData += data.substring(0, defineIndex);
+    //
+    //     var define = data.substring(defineIndex + 8); // for now assuming a single space. Let's not be annoying, shall we?
+    //
+    //     var keyEnd = define.search(/\s/);
+    //     var key = define.substring(0, keyEnd);
+    //     var valueEnd = define.search('\n');
+    //     var value = define.substring(keyEnd + 1, valueEnd).trim();
+    //
+    //     if (value.length > 0) {
+    //         console.error('key:' + key);
+    //         console.error('value:' + value);
+    //
+    //         data = data.substring(defineIndex + valueEnd + 9);
+    //
+
+    //     }
+    //     else {
+    //       newData += data.substring(0,defineIndex + valueEnd+9);
+    //       data = data.substring(defineIndex + valueEnd+9);
+    //     }
+    //     defineIndex = data.search('!define');
+    // }
+
+    //data = newData + data;
+    //console.error(debugData);
+    var aUMLBlocks = parser.parse(processedData);
+  } catch(e) {
+    abort("Error parsing input file: ", config.input, e);
+  }
+  fs.readFile("templates/" + config.language + ".hbs", { encoding: "UTF-8" }, function (err, data) {
+    if (err === null) {
+      processTemplateFile(config, data, aUMLBlocks);
+    } else {
+      abort("Unable to read template file for " + config.language + ".");
+    }
+  });
+}
+
+function processTemplateFile(config, templateData, dictionary) {
+
+
+  hbs.registerHelper('isPrimitive',function (){
+
+      const type = this.getReturnType();
+
+      if (type == 'string' || type == 'integer' || type == 'float') {
+          return true;
+      }
+      return false;
+    /*  "type": {{#if isPrimitive getReturnType}}"{{getReturnType}}"{{else}}"something else"{{/if}} */
+  });
+
+  hbs.registerHelper('isType',function (type){
+
+    const type2 = this.getReturnType();
+
+    return type2 == type;
+
+    /*  "type": {{#if isPrimitive getReturnType}}"{{getReturnType}}"{{else}}"something else"{{/if}} */
+  });
+
+
+    var template = hbs.compile(templateData);
+
+  var output = "";
+
+  dictionary.forEach(function (element) {
+  //  element.getClasses().forEach(function (element) {
+      output += template(element) + os.EOL + os.EOL;
+  //  })
+  })
+
+  if (config.output === null) {
+    console.log(output);
+  } else {
+    fs.writeFile(config.output, output, function (err) {
+      if (err !== null) {
+        abort("Unable to write output file for " + config.output + ".");
+      }
+    })
+  }
+
+}
+
+// Workaround for an apparent bug in Handlebars: functions are not called with the parent scope
+// as context.
+//
+// Here the getFullName is found in the parent scope (Class), but it is called with the current
+// scope (Field) as context:
+//
+// {{#each getFields}}
+//   {{../getFullName}}
+// {{/each}}
+//
+// The following helper works around it:
+//
+// {{#each getFields}}
+//   {{#call ../this ../getFullName}}
+// {{/each}}
+
+hbs.registerHelper('call', function (context, member, options) {
+   return member.call(context);
+});
+
+exports.convertFile = convertFile;

@@ -1,0 +1,66 @@
+{{#*inline "type"}}
+    {{#if (isType 'string')}}
+    "type": "string"
+    {{else}}
+        {{#if (isType 'integer')}}
+    "type": "integer"
+        {{else}}
+            {{#if (isType 'float')}}
+    "type": "float"
+            {{else}}
+               {{#if (isType 'integer')}}
+    "type": "boolean"
+                {{else}}
+                    {{#if (isType 'date')}}
+    "type": "string",
+    "format": "date"
+                    {{else}}
+                        {{#if (isType 'datetime')}}
+    "type": "string",
+    "format": "datetime"
+                        {{else}}
+    "$ref": "#/definitions/{{this.getReturnType}}"
+                        {{/if}}
+                    {{/if}}
+                {{/if}}
+            {{/if}}
+        {{/if}}
+    {{/if}}
+{{/inline}}
+{{#each children}}
+    {{> myPartial}}
+{{/each}}
+
+{
+"$schema": "http://json-schema.org/draft-07/schema#",
+"$id": "http://digib.com/datamodel/v1.0.0.0",
+"definitions": {
+{{#each getClasses}}
+    "{{getName}}Attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+    {{#each getFields}}
+        "{{this.getName}}": {
+        {{#if this.isArray}}
+            "type": "array"
+            "items": {
+            {{> type }}
+            }
+        {{else}}
+        {{> type }}
+        {{/if}}
+        {{#if @last}}
+        }
+        {{else}}
+        },
+        {{/if}}
+    {{/each}}
+{{#if @last}}
+    }
+{{else}}
+    },
+
+{{/if}}
+{{/each}}
+}
