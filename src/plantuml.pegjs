@@ -8,8 +8,8 @@ umlline
   / titleset newline { return null }
   / noise newline { return null }
   / commentline { return null }
-  / notesection newline { return null }
-  / noteline { return null }
+  / note:notesection newline { return note }
+  / note:noteline { return note }
   / hideline newline { return null }
   / skinparams newline { return null }
   / declaration:togetherdeclaration newline { return declaration }
@@ -34,9 +34,11 @@ hideline
 skinparams
   = noise "skinparam" noise [^\r\n]+
 connectordeclaration
-  = noise leftObject:objectname noise connectordescription? noise connector:connectortype noise connectordescription? noise? rightObject:objectname noise? label:connectorlabel? { var Connection = require("./Connection"); return new Connection(leftObject, connector, rightObject,label) }
+  = noise leftObject:objectname noise leftCar:connectordescription? noise connector:connectortype noise rightCar:connectordescription? noise? rightObject:objectname noise? label:connectorlabel? { var Connection = require("./Connection"); return new Connection(leftObject, leftCar, connector, rightCar, rightObject,label) }
 connectordescription
-  = noise ["]([\\]["]/[^"])*["] noise
+  = noise car:connectordescription2 noise { return car }
+connectordescription2
+  = ["]char:([\\]["]/[^"])*["] { return '"'+ char.join("") + '"'; }
 titleset
   = noise "title " noise [^\r\n]+ noise
 commentline
@@ -45,40 +47,47 @@ commentline
   / noise "--" [^\r\n\-]+ "--" noise
   / noise "__" [^\r\n\_]+ "__" noise
 noteline
-    = noise "note " noise [^\r\n]+ noise
+    = noise "note " noise notedirection "of " classname:objectnamebase fieldname:notefield  notetext:[^\r\n]+ noise { var Note = require("./Note"); return new Note(classname,fieldname,notetext.join(""))  }
 notesection
-    = noise "note " notedirection "of " noteattachto noise newline+ notetext:notemultiline+ noise "end note" noise { console.log("note: " + notetext.join("") ) }
+    = noise "note " notedirection "of " classname:objectnamebase fieldname:notefield noise newline+ notetext:notemultiline+ noise "end note" noise { var Note = require("./Note"); return new Note(classname,fieldname,notetext.join(""))  }
 notedirection
     = "left "
     / "right "
     / "up "
     / "down "
-noteattachto
-    = objectname "::" objectname
-    / objectname
+notefield
+    = "::" fieldname:objectnamebase { return fieldname}
+    / "" { return null }
 notemultiline
-    = char:[^e]+ {return char.join("") }
+    = char:[^e]+ { return char.join("") }
     / [e]!"nd note" {return "e"}
 connectortype
   = item:extends { return item }
-  / concatenates { var Composition = require("./Composition"); return new Composition() }
-  / aggregates { var Aggregation = require("./Aggregation"); return new Aggregation() }
-  / connectorsize { return null }
+  / item:concatenates { return item }
+  / item:aggregates { return item }
+  / item:associates { return item }
+  / item:depends { return item }
 extends
-  = "<|" connectorsize { var Extension = require("./Extension"); return new Extension(true) }
-  / connectorsize "|>" { var Extension = require("./Extension"); return new Extension(false) }
-connectorsize
-  = ".."
-  / "--" connectordirection "-"
+  = "<|" associateconnector { var Extension = require("./Extension"); return new Extension(true) }
+  / associateconnector "|>" { var Extension = require("./Extension"); return new Extension(false) }
+
+associates = associateconnector { var Association = require("./Association"); return new Association() }
+
+depends = dependencyconnector {  var Dependency = require("./Dependency"); return new Dependency() }
+
+associateconnector = "--" connectordirection "-"
   / "--" connectordirection
   / "-" connectordirection "--"
   / "-" connectordirection "-"
-  / "." connectordirection "."
   / "-" connectordirection
   / "---"
   / "--"
-  / [.]
   / [-]
+
+dependencyconnector = ".."
+  / "." connectordirection "."
+  / [.]
+
 connectordirection
  = "up"
  / "down"
@@ -87,11 +96,11 @@ connectordirection
  / "[hidden]"
  / [udlr]
 concatenates
-  = "*" connectorsize
-  / connectorsize [*]
+  = "*" associateconnector { var Composition = require("./Composition"); return new Composition(true) }
+  / associateconnector [*] { var Composition = require("./Composition"); return new Composition(false) }
 aggregates
-  = "o" connectorsize
-  / connectorsize [o]
+  = "o" associateconnector { var Composition = require("./Aggregation"); return new Aggregation(true) }
+  / associateconnector [o] { var Composition = require("./Aggregation"); return new Aggregation(false) }
 connectorlabel
   = noise [:] noise label:directedlabel {return label}
 directedlabel
@@ -124,15 +133,15 @@ newline
   = [\r\n]
   / [\n]
 interfacedeclaration
-  = noise "interface " noise classname:objectname noise startblock lines:classlines endblock { var Class = require("./Class"); return new Class(classname, lines) }
+  = noise "interface " noise classname:objectname noise startblock lines:classlines endblock { var Class = require("./Class"); return new Class(classname,null, lines) }
   / noise "interface " noise classname:objectname noise { var Class = require("./Class"); return new Class(classname) }
 classdeclaration
-  = noise "class " noise classname:objectname noise (stereotype noise)? startblock lines:classlines endblock { var Class = require("./Class"); return new Class(classname, lines) }
-  /// noise "class " noise classname:objectname noise "<<" noise [^>]+ noise ">>" noise { var Class = require("./Class"); return new Class(classname) }
+  = noise "class " noise classname:objectname noise st:stereotype startblock lines:classlines endblock { var Class = require("./Class"); return new Class(classname,st,lines) }
   / noise "class " noise classname:objectname noise { var Class = require("./Class"); return new Class(classname) }
-  / noise "class " noise classname:objectname noise newline noise lines:classlines "end class" { var Class = require("./Class"); return new Class(classname, lines) }
+  / noise "class " noise classname:objectname noise newline noise lines:classlines "end class" { var Class = require("./Class"); return new Class(classname,null, lines) }
 stereotype
-  = "<<" noise ("(" [A-Za-z] "," objectname ")")? noise st:objectname noise ">>" {return st};
+  = "<<" noise ("(" [A-Za-z] "," objectname ")")? noise st:objectname noise ">>" noise {return st}
+  / "" { return null }
 color
   = [#][0-9a-fA-F]+
 namespacedeclaration
@@ -149,7 +158,7 @@ fielddeclaration
   / noise accessortype:accessortype noise returntype:returntype array:array noise membername:membername noise { var Field = require("./Field"); return new Field(accessortype, returntype, array, membername) }
   / noise accessortype:accessortype noise membername:membername noise constraint:constraint? noise? { var Field = require("./Field"); return new Field(accessortype, "void", false, membername,constraint) }
   / noise membername:membername noise? [:] noise returntype:returntype array:array noise constraint:constraint? noise? { var Field = require("./Field"); return new Field("", returntype, array, membername,constraint) }
-  / noise returntype:returntype array:array noise membername:membername noise { var Field = require("./Field"); return new Field("+", returntype, array, membername) }
+  / noise returntype:returntype array:array noise membername:membername? constraint:constraint? noise? noise { var Field = require("./Field"); return new Field("", returntype, array, membername,constraint) }
   / noise membername:membername noise constraint:constraint? noise? { var Field = require("./Field"); return new Field("", "void", array, membername,constraint) }
 methoddeclaration
   = noise field:fielddeclaration [(] parameters:methodparameters [)] noise { var Method = require("./Method"); return new Method(field.getAccessType(), field.getReturnType(), field.getName(), parameters); }

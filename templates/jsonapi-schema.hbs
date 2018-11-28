@@ -1,66 +1,341 @@
+{{#*inline "constraint"}}
+{{#if minimum}}
+"minimum": {{minimum}}
+    {{~#if exclusiveMinimum}},
+"exclusiveMinimum": true
+    {{~/if~}}
+{{~/if~}}
+{{~#if maximum}},
+"maximum": {{maximum}}
+    {{~#if exclusiveMaximum~}},
+"exclusiveMaximum": true
+    {{/if~}}
+{{~/if~}}
+{{/inline~}}
+
+{{#*inline "attributeDecorations"}}
+{{#if getNote}},
+    "description": "{{{cleanString (getNote)}}}"{{/if}}{{#if (isReadOnly)}},
+    "readOnly": true
+{{~/if~}}
+{{/inline~}}
+
 {{#*inline "type"}}
     {{#if (isType 'string')}}
-    "type": "string"
+    "type": "string"{{> attributeDecorations}}{{#if getConstraint}},
+    "pattern": "{{escape (getConstraint) }}"
+      {{/if}}
     {{else}}
         {{#if (isType 'integer')}}
-    "type": "integer"
+    "type": "integer"{{> attributeDecorations}}{{#if getConstraint}},
+    {{>constraint (rangeConstraint (getConstraint))}}
+        {{/if}}
         {{else}}
             {{#if (isType 'float')}}
-    "type": "float"
+    "type": "number"{{> attributeDecorations}}{{#if getConstraint}},
+    {{>constraint (rangeConstraint (getConstraint))}}
+                {{/if}}
             {{else}}
-               {{#if (isType 'integer')}}
-    "type": "boolean"
-                {{else}}
+               {{#if (isType 'boolean')}}
+    "type": "boolean"{{> attributeDecorations~}}
+               {{else}}
                     {{#if (isType 'date')}}
-    "type": "string",
+    "type": "string"{{> attributeDecorations}},
     "format": "date"
                     {{else}}
                         {{#if (isType 'datetime')}}
-    "type": "string",
-    "format": "datetime"
-                        {{else}}
+    "type": "string"{{> attributeDecorations}},
+    "format": "date-time"
+                        {{~else}}
     "$ref": "#/definitions/{{this.getReturnType}}"
-                        {{/if}}
+                        {{~/if}}
                     {{/if}}
                 {{/if}}
             {{/if}}
         {{/if}}
     {{/if}}
-{{/inline}}
-{{#each children}}
-    {{> myPartial}}
-{{/each}}
+{{/inline~}}
 
-{
-"$schema": "http://json-schema.org/draft-07/schema#",
-"$id": "http://digib.com/datamodel/v1.0.0.0",
-"definitions": {
-{{#each getClasses}}
-    "{{getName}}Attributes": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
+
+{{#*inline "fieldType"}}
+"{{getName}}": {
     {{#each getFields}}
-        "{{this.getName}}": {
+{{> type }}
+    {{/each}}
+{{/inline~}}
+
+{{#*inline "regularType"}}
+"{{getName}}": {
+    "type": "object",
+    {{#if getNote }}
+    "description": "{{{cleanString (getNote)}}}",
+    {{/if}}
+    "additionalProperties": false,
+    "properties": {
+    {{> fields }}
+    }{{#if (getRequiredFields) }},
+    {{> required-fields}}
+    {{else}}
+
+    {{/if}}
+{{/inline~}}
+
+{{#*inline "fields"}}
+    {{#each getFields}}
+    "{{this.getName}}": {
         {{#if this.isArray}}
-            "type": "array"
-            "items": {
-            {{> type }}
-            }
-        {{else}}
+        "type": "array",
+            {{#if getNote }}
+        "description": "{{{cleanString (getNote)}}}",
+            {{/if}}
+        "items": {
         {{> type }}
+
+        }{{else~}}
+    {{> type }}
+        {{/if}}
+        {{#if @last}}
+
+    }
+        {{else}}
+
+    },
+        {{/if}}
+    {{/each}}
+{{/inline~}}
+
+{{#*inline "required-fields"}}
+"required": [
+    {{#each (getRequiredFields)}}
+    "{{getName}}"{{#unless @last}},
+    {{/unless}}
+    {{/each}}
+
+]
+{{/inline~}}
+
+{{#*inline "name"}}
+    {{~ getName ~}}
+{{/inline~}}
+
+{{#*inline "jsonapi-resource"}}
+"{{getName}}Attributes": {
+{{#if getStereotype }}
+    "allOf": [
+        {
+        "$ref": "#/definitions/{{getStereotype}}"
+        }
+    ],
+    {{/if}}
+    "additionalProperties": false,
+    "properties": {
+    {{> fields }}
+    }{{#if (getRequiredFields) }},
+    {{> required-fields}}
+    {{else}}
+
+    {{/if}}
+},
+
+"{{getName}}": {
+    "type": "object",
+    {{#if getNote }}
+    "description": "{{{cleanString (getNote)}}}",
+    {{/if}}
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "$ref": "#/definitions/Id"
+        },
+        "type": {
+            "type": "string",
+            "enum": ["{{getName}}"]
+        },
+        "attributes": {
+            "allOf": [
+        {{#if getExtends}}
+                {
+                    "$ref": "#/definitions/{{> name (getExtends) }}"
+                },
+        {{/if}}
+                {
+                    "$ref": "#/definitions/{{getName}}Attributes"
+                }
+              ]
+        }
+        {{~#if getConnections}},
+        "relationships": {
+            "type": "object",
+            "properties": {
+            {{~#each getConnections}}{{ parseCardinality }}
+                "{{getRelationName}}": {
+            "$ref": "#/definitions/To{{#if isMultiple}}Many{{else}}Single{{/if}}{{#if isMultiple}}{{ toPlural oObject.className }}{{else}}{{ oObject.className }}{{/if}}"
+                {{#unless @last}}
+                },
+                {{~else}}
+                }
+                {{/unless}}
+            {{/each}}
+            }
+            {{~#if (getRequiredRelations) }},
+            "required": [
+                {{#each (getRequiredRelations)}}
+                "{{getRelationName}}"
+                    {{#unless @last}}
+                ,
+                    {{/unless}}
+                {{/each}}
+            ]
+            {{else}}
+
+            {{/if}}
+        }
+    },
+    "required": [
+        "type",
+        "attributes",
+        "relationships"
+    ]
+        {{else}}
+    },
+    "required": [
+        "type",
+        "attributes"
+    ]
+        {{/if}}
+},
+
+"{{getName}}Key": {
+    "type": "object",
+    "properties": {
+        "type":{
+            "enum": [
+                "{{getName}}"
+            ]
+        }
+    },
+    "allOf" : [
+        {
+            "$ref": "#/definitions/{{getStereotype}}Key"
+        }
+    ]
+},
+
+"ToSingle{{getName}}": {
+    "type": "object",
+    "properties": {
+        "data": {
+            "$ref": "#/definitions/{{getName}}Key"
+        }
+    },
+    "required": ["data"],
+    "additionalProperties" : false
+},
+
+"ToMany{{toPlural (getName) }}": {
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "array",
+                "items": {
+                    "$ref": "#/definitions/{{getName}}Key"
+                }
+            }
+    },
+    "required": ["data"],
+    "additionalProperties" : false
+{{/inline}}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$id": "http://digib.com/datamodel/v2.0.0.0",
+    "definitions": {
+
+        "Id": {
+            "type": "integer",
+            "format": "int64",
+            "readOnly": true
+        },
+
+        "ExternalObjectKey": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "$ref": "#/definitions/Id"
+                        }
+                    },
+                    "required": ["id"],
+                    "additionalProperties" : false
+                },
+                {
+                    "$ref": "#/definitions/externalKey"
+                }
+            ]
+        },
+
+        "Key": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "#/definitions/Id"
+                }
+            },
+            "required": ["id"],
+            "additionalProperties" : false
+        },
+
+{{!--
+        "ToSingleMember": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "type":{
+                            "enum": [
+                                "Member"
+                            ]
+                        }
+                    },
+                    "allOf" : [
+                        {
+                            "$ref": "#/definitions/Key"
+                        }
+                    ]
+                }
+            },
+            "required": ["data"],
+            "additionalProperties" : false
+        },--}}
+    {{#each getEnumerations}}
+        "{{getName}}": {
+            "type": "string",
+            "enum": [
+        {{#each getItems}}
+              "{{ cleanString this }}"{{#unless @last~}},{{/unless}}
+        {{/each}}
+            ]
+        },
+    {{/each}}
+
+    {{#each getClasses}}
+        {{#if (isFieldType)}}
+        {{> fieldType }}
+        {{else}}
+            {{#if (isBasicType)}}
+        {{!--> jsonapi-resource --}}
+        {{> regularType }}
+            {{else}}
+        {{> jsonapi-resource }}
+            {{/if}}
         {{/if}}
         {{#if @last}}
         }
-        {{else}}
+    {{else}}
         },
-        {{/if}}
-    {{/each}}
-{{#if @last}}
-    }
-{{else}}
-    },
 
-{{/if}}
-{{/each}}
+    {{/if}}
+    {{/each}}
+    }
 }

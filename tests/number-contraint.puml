@@ -1,0 +1,12 @@
+@startuml
+
+class test  {
+ a: integer {[0-9]}
+ b: integer {<0-9>}
+ c: integer {[12-453>}
+ d: integer {<23.23-28.4]}
+ e: integer {[0-oo>}
+ f: integer {<oo-9]}
+}
+
+@enduml

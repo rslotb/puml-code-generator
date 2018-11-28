@@ -5,7 +5,7 @@ module.exports = (function () {
   var Class = require("./Class");
 
   var AbstractClass = function (className, fileLines) {
-    AbstractClass.super_.call(this, className, fileLines);
+    AbstractClass.super_.call(this, className, null,fileLines);
   }
   util.inherits(AbstractClass, Class);
 

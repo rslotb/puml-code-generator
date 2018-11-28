@@ -1,11 +1,14 @@
 
 module.exports = (function () {
 
-  var Connection = function (leftObject, connector, rightObject) {
+  var Connection = function (leftObject, leftCar, connector, rightCar, rightObject,label) {
     this.leftObject = leftObject;
+    this.leftCar = leftCar;
     this.connector = connector;
+    this.rightCar = rightCar;
     this.pNamespace = null;
     this.rightObject = rightObject;
+    this.label = label;
   }
 
   Connection.prototype.setNamespace = function (namespace) {
@@ -18,6 +21,10 @@ module.exports = (function () {
 
   Connection.prototype.getNamespace = function () {
     return this.pNamespace;
+  }
+
+  Connection.prototype.getLabel = function () {
+      return this.label;
   }
 
   return Connection;

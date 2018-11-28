@@ -50,7 +50,7 @@ module.exports = (function() {
         peg$c11 = { type: "literal", value: "!include", description: "\"!include\"" },
         peg$c12 = function(file) { var Include = require("./Include"); return new Include(file); },
         peg$c13 = function() { return null },
-        peg$c14 = function(code) { return code },
+        peg$c14 = function(code) { return code.join("") },
         peg$c15 = "!ifdef",
         peg$c16 = { type: "literal", value: "!ifdef", description: "\"!ifdef\"" },
         peg$c17 = function() { return true },
@@ -532,7 +532,16 @@ module.exports = (function() {
                     s0 = peg$currPos;
                     s1 = peg$parsenoise();
                     if (s1 !== peg$FAILED) {
-                      s2 = peg$parsecode();
+                      s2 = [];
+                      s3 = peg$parsecode();
+                      if (s3 !== peg$FAILED) {
+                        while (s3 !== peg$FAILED) {
+                          s2.push(s3);
+                          s3 = peg$parsecode();
+                        }
+                      } else {
+                        s2 = peg$FAILED;
+                      }
                       if (s2 !== peg$FAILED) {
                         s3 = peg$parsenoise();
                         if (s3 !== peg$FAILED) {

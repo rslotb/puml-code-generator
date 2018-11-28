@@ -258,7 +258,7 @@ function processInputFile(config, data) {
     // }
 
     //data = newData + data;
-    //console.error(debugData);
+    console.error(debugData);
     var aUMLBlocks = parser.parse(processedData);
   } catch(e) {
     abort("Error parsing input file: ", config.input, e);
@@ -270,6 +270,17 @@ function processInputFile(config, data) {
       abort("Unable to read template file for " + config.language + ".");
     }
   });
+}
+
+function toPlural(string) {
+
+    switch (string.slice(-1)) {
+        case "s":
+            return string + "es";
+        case "y":
+            return string.slice(0,-1) + "ies";
+    }
+    return string + "s";
 }
 
 function processTemplateFile(config, templateData, dictionary) {
@@ -295,8 +306,132 @@ function processTemplateFile(config, templateData, dictionary) {
     /*  "type": {{#if isPrimitive getReturnType}}"{{getReturnType}}"{{else}}"something else"{{/if}} */
   });
 
+  hbs.registerHelper('rangeConstraint',function (constraint){
 
-    var template = hbs.compile(templateData);
+        let exp = /^(\[|<)((?:\d+(?:\.\d+)?)|oo)-((?:\d+(?:\.\d+)?)|oo)(\]|>)$/;
+
+        if (!exp.test(constraint)) {
+
+            abort("Invalid range constraint: " + constraint);
+        }
+        let parsed = exp.exec(constraint);
+
+        let returnValue = {};
+
+        if (parsed[2] != "oo") {
+            returnValue.minimum = parsed[2];
+            if (parsed[1] == "<") {
+                returnValue.exclusiveMinimum = true;
+            }
+        }
+        if (parsed[3] != "oo") {
+            returnValue.maximum = parsed[3];
+            if (parsed[4] == ">") {
+                  returnValue.exclusiveMaximum = true;
+            }
+        }
+        return returnValue;
+        //let result =  JSON.stringify(returnvalue,null,2);
+        //return result.substring(1,result.length-2);
+   });
+
+
+
+   hbs.registerHelper('cleanString',function (string){
+
+       return  string.replace(/\s+/g," ").trim();
+   });
+
+    hbs.registerHelper('isFieldType',function (){
+
+        return this.getStereotype() == 'type' && this.getFields().length == 1 && this.getConnections().length == 0;
+    });
+
+    hbs.registerHelper('isBasicType',function (){
+
+        return this.getStereotype() == 'type' || this.isAbstract();
+    });
+
+    hbs.registerHelper('getRelationName',function (){
+
+         let nonSelfDuplicate = this.duplicate && this.getConnector().leftObject  != this.getConnector().rightObject;
+
+         if (this.getConnector().getLabel() && (this.connector.getLabel().isLeft() == this.isLeft() || nonSelfDuplicate) ) {
+             return this.connector.label.getLabel();
+         }
+         else {
+             // make firt letter lowercase, as this is an attribute.
+             let name = this.getObject().getName();
+             name = name[0].toUpperCase() + name.slice(1);
+             // optionally make it plural.
+             // TODO: someday, make a feature were users can submit their own plurals for weird cases or other languages.
+             return name + (this.isMultiple() ? toPlural(name) : "");
+         }
+    });
+
+    hbs.registerHelper('toPlural',toPlural);
+
+    hbs.registerHelper('parseCardinality',function (){
+
+        var car  = /^"(?:(\d+)\.\.)?(?:(\d+)|\*)"$/;
+
+        if (!this.cardinality) {
+
+            //TODO: figure out if it really is aggregation
+            this.required = true;
+            this.multiple = false;
+            return;
+        }
+
+        if (!car.test(this.cardinality)) {
+            throw "unable to parse cardinality for class: " + this.oObject.className + " : " + this.cardinality;
+        }
+        var parsed = car.exec(this.cardinality);
+
+        if (parsed[1]) {
+            this.required = parseInt(parsed[1]) > 0;
+        }
+        if (parsed[2]) {
+              if (!parsed[1]) {
+                  this.required = (parseInt(parsed[1]) > 0);
+              }
+              this.multiple = (parseInt(parsed[1]) > 1);
+        }
+        else { // *
+            if (!parsed[1]) {
+                this.required = false;
+            }
+            this.multiple = true;
+        }
+    });
+
+    hbs.registerHelper('getRelationClass',function (){
+
+        return this.object.className+"q"; //(this.isMultiple?"s":"q");
+    });
+
+    hbs.registerHelper('getRequiredRelations',function (){
+
+        return this.getConnections().filter( function (element) { return element.isRequired() });
+    });
+
+    hbs.registerHelper('getRequiredFields',function (){
+
+        return this.getFields().filter( function (element) { return element.getAccessType() === "#" });
+    });
+
+    hbs.registerHelper('isReadOnly',function (){
+
+        return this.getAccessType() === "-";
+    });
+
+    hbs.registerHelper('escape',function ( string ){
+
+        return string.replace(/\\/g,"\\\\");
+    });
+
+
+  var template = hbs.compile(templateData);
 
   var output = "";
 

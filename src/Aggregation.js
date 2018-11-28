@@ -1,14 +1,14 @@
 
 module.exports = (function () {
 
-  var Composition = function (bIsLeft) {
+  var Aggregation = function (bIsLeft) {
 
       this.bIsLeft = bIsLeft;
   };
-  Composition.prototype.isLeft = function () {
+  Aggregation.prototype.isLeft = function () {
         return this.bIsLeft;
   };
 
- return Composition;
+ return Aggregation;
 
 })();

@@ -10,7 +10,7 @@ umlline
   / noise "!include" noise file:filename noise newline { var Include = require("./Include"); return new Include(file); }
   / noise newline { return null }
   / commentline { return null }
-  / noise code:code noise newline? { return code }
+  / noise code:code+ noise newline? { return code.join("") }
 ifdef
  = "!ifdef" { return true }
  / "!ifndef" { return false }

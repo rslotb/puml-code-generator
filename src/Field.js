@@ -7,6 +7,7 @@ module.exports = (function () {
     this.sIsArray = isArray;
     this.sFieldName = fieldName;
     this.sConstraint = constraint;
+    this.note = null;
   }
 
   Field.prototype.getAccessType = function () {
@@ -22,11 +23,18 @@ module.exports = (function () {
   }
 
   Field.prototype.getConstraint = function () {
-     return this.sFieldName;
+     return this.sConstraint;
   }
 
   Field.prototype.isArray = function () {
       return this.sIsArray;
+  }
+
+  Field.prototype.getNote = function () {
+      return this.note;
+  }
+  Field.prototype.setNote = function (note) {
+      this.note = note;
   }
 
 

@@ -4,11 +4,14 @@ module.exports = (function () {
   var Field = require("./Field");
   var Method = require("./Method");
 
-  var Class = function (className, fileLines) {
+  var Class = function (className, stereotype, fileLines) {
     this.cExtends = null;
     this.fileLines = fileLines || [];
     this.className = className;
+    this.stereotype = stereotype;
     this.nNamespace = null;
+    this.note = null;
+    this.connections = [];
   }
   
   Class.prototype.setExtends = function (className) {
@@ -33,6 +36,18 @@ module.exports = (function () {
 
   Class.prototype.getName = function () {
     return this.className;
+  }
+
+  Class.prototype.getStereotype = function () {
+      return this.stereotype;
+  }
+
+  Class.prototype.getNote = function () {
+      return this.note;
+  }
+
+  Class.prototype.setNote = function (note) {
+        this.note = note;
   }
  
   Class.prototype.hasMethods = function () {
@@ -79,6 +94,10 @@ module.exports = (function () {
     } else {
       return this.getName();
     }
+  }
+
+  Class.prototype.getConnections = function () {
+    return this.connections;
   }
 
   return Class;
