@@ -47,7 +47,17 @@
     "type": "string"{{> attributeDecorations}},
     "format": "date-time"
                         {{~else}}
+                            {{#if (isType 'email')}}
+    "type": "string"{{> attributeDecorations}},
+    "format": "email"
+                            {{~else}}
+                                {{#if (isType 'uri')}}
+    "type": "string"{{> attributeDecorations}},
+    "format": "uri"
+                                {{~else}}
     "$ref": "#/definitions/{{this.getReturnType}}"
+                                {{~/if}}
+                            {{~/if}}
                         {{~/if}}
                     {{/if}}
                 {{/if}}

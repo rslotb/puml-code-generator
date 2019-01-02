@@ -27,7 +27,7 @@ classline
 classlines
   = lines:(classline*) { for (var i = 0; i < lines.length; i++) { if (lines[i]===null) { lines.splice(i, 1); i--; } } return lines; }
 
-startuml = "@startuml" { global.defines = new Map(); global.defined = false; }
+startuml = "@startuml"
 hideline
   = noise "hide empty members" noise
   / noise "hide" noise objectname noise
@@ -115,8 +115,9 @@ endblock
 propertyset
   = "setpropname.*"
 packagedeclaration
-  = "package " objectname startblock newline lines:umllines endblock { var Package = require("./Package"); return new Package(lines) }
-  / "package " objectname newline umllines "end package" { var Package = require("./Package"); return new Package(lines) }
+// for now treating package as namespace, as the packaging implementation is not there, but using namespace does not work well with includes in PlantUML.
+  = "package " namespacename:objectname startblock newline lines:umllines endblock {var Namespace = require("./Namespace"); return new Namespace(namespacename, lines)  }
+  / "package " namespacename:objectname newline umllines "end package" { var Namespace = require("./Namespace"); return new Namespace(namespacename, lines)  }
 abstractclassdeclaration
   = noise "abstract " noise "class "? noise classname:objectname noise startblock lines:classlines endblock { var AbstractClass = require("./AbstractClass"); return new AbstractClass(classname, lines) }
   / noise "abstract " noise "class "? noise classname:objectname noise { var AbstractClass = require("./AbstractClass"); return new AbstractClass(classname) }

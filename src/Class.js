@@ -96,6 +96,10 @@ module.exports = (function () {
     }
   }
 
+  Class.prototype.hasConnections = function () {
+    return this.connections.length > 0;
+  }
+
   Class.prototype.getConnections = function () {
     return this.connections;
   }

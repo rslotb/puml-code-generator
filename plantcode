@@ -11,6 +11,7 @@ var Else = require("./src/Else");
 var IfDef = require("./src/IfDef");
 var Include = require("./src/Include");
 var Enumeration = require("./src/Enumeration");
+var ConnectionEnd = require("./src/ConnectionEnd");
 
 var path = require('path');
 
@@ -19,7 +20,7 @@ var options = {
   output: null
 };
 
-var supported_languages = ["coffeescript", "csharp", "ecmascript5", "ecmascript6", "java", "php", "ruby", "typescript","jsonapi-schema"];
+var supported_languages = ["coffeescript", "csharp", "ecmascript5", "ecmascript6", "java", "php", "ruby", "typescript","jsonapi-schema","python-django"];
 
 var args = process.argv.slice(2); // Trim "node" and the script path.
 
@@ -283,6 +284,40 @@ function toPlural(string) {
     return string + "s";
 }
 
+function parseCardinality(connectionEnd){
+
+    var car  = /^"(?:(\d+)\.\.)?(?:(\d+)|\*)"$/;
+
+    if (!connectionEnd.cardinality) {
+
+        //TODO: figure out if it really is aggregation
+        connectionEnd.required = true;
+        connectionEnd.multiple = false;
+        return;
+    }
+
+    if (!car.test(connectionEnd.cardinality)) {
+        throw "unable to parse cardinality for class: " + this.oObject.className + " : " + connectionEnd.cardinality;
+    }
+    var parsed = car.exec(connectionEnd.cardinality);
+
+    if (parsed[1]) {
+        connectionEnd.required = parseInt(parsed[1]) > 0;
+    }
+    if (parsed[2]) {
+        if (parsed[1]) {
+            connectionEnd.required = (parseInt(parsed[1]) > 0);
+        }
+        connectionEnd.multiple = (parseInt(parsed[1]) > 1);
+    }
+    else { // *
+        if (!parsed[1]) {
+            connectionEnd.required = false;
+        }
+        connectionEnd.multiple = true;
+    }
+};
+
 function processTemplateFile(config, templateData, dictionary) {
 
 
@@ -352,62 +387,34 @@ function processTemplateFile(config, templateData, dictionary) {
         return this.getStereotype() == 'type' || this.isAbstract();
     });
 
-    hbs.registerHelper('getRelationName',function (){
+    hbs.registerHelper('getRelationName',function ( connectionEnd ){
 
-         let nonSelfDuplicate = this.duplicate && this.getConnector().leftObject  != this.getConnector().rightObject;
+         if (!(connectionEnd instanceof ConnectionEnd )) {
+             connectionEnd = this;
+         }
 
-         if (this.getConnector().getLabel() && (this.connector.getLabel().isLeft() == this.isLeft() || nonSelfDuplicate) ) {
-             return this.connector.label.getLabel();
+         let nonSelfDuplicate = connectionEnd.duplicate && connectionEnd.getConnector().leftObject  != connectionEnd.getConnector().rightObject;
+
+         if (connectionEnd.getConnector().getLabel() && (connectionEnd.connector.getLabel().isLeft() == connectionEnd.isLeft() || nonSelfDuplicate) ) {
+             return connectionEnd.connector.label.getLabel();
          }
          else {
-             // make firt letter lowercase, as this is an attribute.
-             let name = this.getObject().getName();
-             name = name[0].toUpperCase() + name.slice(1);
+             // make first letter lowercase, as this is an attribute.
+             let name = connectionEnd.getObject().getName();
+             name = name[0].toLowerCase() + name.slice(1);
              // optionally make it plural.
              // TODO: someday, make a feature were users can submit their own plurals for weird cases or other languages.
-             return name + (this.isMultiple() ? toPlural(name) : "");
+             return connectionEnd.isMultiple() ? toPlural(name) : name;
          }
     });
 
     hbs.registerHelper('toPlural',toPlural);
 
-    hbs.registerHelper('parseCardinality',function (){
-
-        var car  = /^"(?:(\d+)\.\.)?(?:(\d+)|\*)"$/;
-
-        if (!this.cardinality) {
-
-            //TODO: figure out if it really is aggregation
-            this.required = true;
-            this.multiple = false;
-            return;
-        }
-
-        if (!car.test(this.cardinality)) {
-            throw "unable to parse cardinality for class: " + this.oObject.className + " : " + this.cardinality;
-        }
-        var parsed = car.exec(this.cardinality);
-
-        if (parsed[1]) {
-            this.required = parseInt(parsed[1]) > 0;
-        }
-        if (parsed[2]) {
-              if (!parsed[1]) {
-                  this.required = (parseInt(parsed[1]) > 0);
-              }
-              this.multiple = (parseInt(parsed[1]) > 1);
-        }
-        else { // *
-            if (!parsed[1]) {
-                this.required = false;
-            }
-            this.multiple = true;
-        }
-    });
+    hbs.registerHelper('parseCardinality',parseCardinality);
 
     hbs.registerHelper('getRelationClass',function (){
 
-        return this.object.className+"q"; //(this.isMultiple?"s":"q");
+        return this.object.className; //(this.isMultiple?"s":"q");
     });
 
     hbs.registerHelper('getRequiredRelations',function (){
@@ -425,9 +432,43 @@ function processTemplateFile(config, templateData, dictionary) {
         return this.getAccessType() === "-";
     });
 
+    hbs.registerHelper('isRequired',function (){
+
+        return this.getAccessType() === "#";
+    });
+
+
     hbs.registerHelper('escape',function ( string ){
 
         return string.replace(/\\/g,"\\\\");
+    });
+//--- Django
+    hbs.registerHelper('lowerCase',function ( string ){
+
+        return string.toLowerCase();
+    });
+
+    hbs.registerHelper('underscore',function ( string ){
+
+        reg = /([A-Z])/g;
+
+        return string.replace(reg,function( p1 ){
+           return "_"+p1.toLowerCase();
+        });
+
+
+    });
+
+    hbs.registerHelper('getOtherSide',function (){
+
+        let object = this.isLeft? this.connector.rightObject:this.connector.leftObject;
+
+        return object.connections.find(function(element ) { return element.oObject ==  object });
+    });
+
+    hbs.registerHelper('getSingleConnections',function (){
+
+        return this.getConnections().filter( function (element) {parseCardinality(element);  return !element.isMultiple() });
     });
 
 
