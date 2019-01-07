@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+//TODO: pass original line numbers from pre-processor to actual parser.
+//TODO: preprocessor debug flag / output
+
 var fs = require("fs");
 var hbs = require("handlebars");
 var preprocessor = require("./src/plantuml-preprocessor");
@@ -13,7 +16,11 @@ var Include = require("./src/Include");
 var Enumeration = require("./src/Enumeration");
 var ConnectionEnd = require("./src/ConnectionEnd");
 
+
+
+
 var path = require('path');
+
 
 var options = {
   language: "coffeescript",
@@ -79,6 +86,16 @@ function getArguments() {
           abort("Invalid language provided.");
         }
         options.language = args[0];
+        break;
+      case "-t":
+      case "--template":
+        nextArg();
+        if (args.length === 0) {
+            abort("Missing template file for the -t/--template option.");
+        } else if (fs.existsSync(args[0])) {
+            abort ("template file: " + args[0] + " not found.");
+        }
+        options.template = args[0];
         break;
       case "--show-languages":
         printLanguages();
@@ -264,212 +281,52 @@ function processInputFile(config, data) {
   } catch(e) {
     abort("Error parsing input file: ", config.input, e);
   }
-  fs.readFile("templates/" + config.language + ".hbs", { encoding: "UTF-8" }, function (err, data) {
-    if (err === null) {
-      processTemplateFile(config, data, aUMLBlocks);
-    } else {
-      abort("Unable to read template file for " + config.language + ".");
+  if (config.template) {
+      fs.readFile("./" + config.template + ".hbs", {encoding: "UTF-8"}, function (err, data) {
+          if (err === null) {
+
+              //config.helpers = "./" + config.template;
+              config.helpers = config.template;
+              processTemplateFile(config, data, aUMLBlocks);
+          } else {
+              abort("Unable to find custom template file: " + config.template + ".hbs .");
+          }
+      });
+  }
+  else {
+        fs.readFile(__dirname + "/templates/" + config.language + ".hbs", {encoding: "UTF-8"}, function (err, data) {
+            if (err === null) {
+
+                config.helpers = __dirname + "/templates/" + config.language;
+                processTemplateFile(config, data, aUMLBlocks);
+            } else {
+                abort("Unable to read template file for " + config.language + ".");
+            }
+        });
     }
-  });
 }
 
-function toPlural(string) {
-
-    switch (string.slice(-1)) {
-        case "s":
-            return string + "es";
-        case "y":
-            return string.slice(0,-1) + "ies";
-    }
-    return string + "s";
-}
-
-function parseCardinality(connectionEnd){
-
-    var car  = /^"(?:(\d+)\.\.)?(?:(\d+)|\*)"$/;
-
-    if (!connectionEnd.cardinality) {
-
-        //TODO: figure out if it really is aggregation
-        connectionEnd.required = true;
-        connectionEnd.multiple = false;
-        return;
-    }
-
-    if (!car.test(connectionEnd.cardinality)) {
-        throw "unable to parse cardinality for class: " + this.oObject.className + " : " + connectionEnd.cardinality;
-    }
-    var parsed = car.exec(connectionEnd.cardinality);
-
-    if (parsed[1]) {
-        connectionEnd.required = parseInt(parsed[1]) > 0;
-    }
-    if (parsed[2]) {
-        if (parsed[1]) {
-            connectionEnd.required = (parseInt(parsed[1]) > 0);
-        }
-        connectionEnd.multiple = (parseInt(parsed[1]) > 1);
-    }
-    else { // *
-        if (!parsed[1]) {
-            connectionEnd.required = false;
-        }
-        connectionEnd.multiple = true;
-    }
-};
 
 function processTemplateFile(config, templateData, dictionary) {
 
+    if (fs.existsSync(config.helpers + ".js")) {
 
-  hbs.registerHelper('isPrimitive',function (){
 
-      const type = this.getReturnType();
+        //TODO: This mess is here because we want a template/js to be able to load
+        // UML Model Class files, and the second is there to be able to load
+        // a template/js from the command line.
+        module.paths.push(__dirname + "\\src");
+        module.paths.push("./");
 
-      if (type == 'string' || type == 'integer' || type == 'float') {
-          return true;
-      }
-      return false;
-    /*  "type": {{#if isPrimitive getReturnType}}"{{getReturnType}}"{{else}}"something else"{{/if}} */
-  });
-
-  hbs.registerHelper('isType',function (type){
-
-    const type2 = this.getReturnType();
-
-    return type2 == type;
-
-    /*  "type": {{#if isPrimitive getReturnType}}"{{getReturnType}}"{{else}}"something else"{{/if}} */
-  });
-
-  hbs.registerHelper('rangeConstraint',function (constraint){
-
-        let exp = /^(\[|<)((?:\d+(?:\.\d+)?)|oo)-((?:\d+(?:\.\d+)?)|oo)(\]|>)$/;
-
-        if (!exp.test(constraint)) {
-
-            abort("Invalid range constraint: " + constraint);
+        var helpers = require(config.helpers);
+        for (var func in helpers) {
+            hbs.registerHelper(func, helpers[func]);
         }
-        let parsed = exp.exec(constraint);
+    }
 
-        let returnValue = {};
-
-        if (parsed[2] != "oo") {
-            returnValue.minimum = parsed[2];
-            if (parsed[1] == "<") {
-                returnValue.exclusiveMinimum = true;
-            }
-        }
-        if (parsed[3] != "oo") {
-            returnValue.maximum = parsed[3];
-            if (parsed[4] == ">") {
-                  returnValue.exclusiveMaximum = true;
-            }
-        }
-        return returnValue;
-        //let result =  JSON.stringify(returnvalue,null,2);
-        //return result.substring(1,result.length-2);
-   });
-
-
-
-   hbs.registerHelper('cleanString',function (string){
-
-       return  string.replace(/\s+/g," ").trim();
-   });
-
-    hbs.registerHelper('isFieldType',function (){
-
-        return this.getStereotype() == 'type' && this.getFields().length == 1 && this.getConnections().length == 0;
-    });
-
-    hbs.registerHelper('isBasicType',function (){
-
-        return this.getStereotype() == 'type' || this.isAbstract();
-    });
-
-    hbs.registerHelper('getRelationName',function ( connectionEnd ){
-
-         if (!(connectionEnd instanceof ConnectionEnd )) {
-             connectionEnd = this;
-         }
-
-         let nonSelfDuplicate = connectionEnd.duplicate && connectionEnd.getConnector().leftObject  != connectionEnd.getConnector().rightObject;
-
-         if (connectionEnd.getConnector().getLabel() && (connectionEnd.connector.getLabel().isLeft() == connectionEnd.isLeft() || nonSelfDuplicate) ) {
-             return connectionEnd.connector.label.getLabel();
-         }
-         else {
-             // make first letter lowercase, as this is an attribute.
-             let name = connectionEnd.getObject().getName();
-             name = name[0].toLowerCase() + name.slice(1);
-             // optionally make it plural.
-             // TODO: someday, make a feature were users can submit their own plurals for weird cases or other languages.
-             return connectionEnd.isMultiple() ? toPlural(name) : name;
-         }
-    });
-
-    hbs.registerHelper('toPlural',toPlural);
-
-    hbs.registerHelper('parseCardinality',parseCardinality);
-
-    hbs.registerHelper('getRelationClass',function (){
-
-        return this.object.className; //(this.isMultiple?"s":"q");
-    });
-
-    hbs.registerHelper('getRequiredRelations',function (){
-
-        return this.getConnections().filter( function (element) { return element.isRequired() });
-    });
-
-    hbs.registerHelper('getRequiredFields',function (){
-
-        return this.getFields().filter( function (element) { return element.getAccessType() === "#" });
-    });
-
-    hbs.registerHelper('isReadOnly',function (){
-
-        return this.getAccessType() === "-";
-    });
-
-    hbs.registerHelper('isRequired',function (){
-
-        return this.getAccessType() === "#";
-    });
-
-
-    hbs.registerHelper('escape',function ( string ){
-
-        return string.replace(/\\/g,"\\\\");
-    });
 //--- Django
-    hbs.registerHelper('lowerCase',function ( string ){
-
-        return string.toLowerCase();
-    });
-
-    hbs.registerHelper('underscore',function ( string ){
-
-        reg = /([A-Z])/g;
-
-        return string.replace(reg,function( p1 ){
-           return "_"+p1.toLowerCase();
-        });
 
 
-    });
-
-    hbs.registerHelper('getOtherSide',function (){
-
-        let object = this.isLeft? this.connector.rightObject:this.connector.leftObject;
-
-        return object.connections.find(function(element ) { return element.oObject ==  object });
-    });
-
-    hbs.registerHelper('getSingleConnections',function (){
-
-        return this.getConnections().filter( function (element) {parseCardinality(element);  return !element.isMultiple() });
-    });
 
 
   var template = hbs.compile(templateData);

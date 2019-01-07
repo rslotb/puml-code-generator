@@ -1,6 +1,6 @@
 {
-  "name": "plantcode",
-  "version": "0.1.1",
+  "name": "plantcode-rs",
+  "version": "0.5.0-0",
   "description": "PlantUML to class file generator.",
   "author": "Brian Folts <brian.folts@gmail.com>",
   "main": "plantcode",
@@ -9,10 +9,6 @@
     "install": "node node_modules/pegjs/bin/pegjs src/plantuml.pegjs src/plantuml.js && node node_modules/pegjs/bin/pegjs src/plantuml-preprocessor.pegjs src/plantuml-preprocessor.js"
   },
   "bin": "plantcode",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/bafolts/plantuml-code-generator.git"
-  },
   "dependencies": {
     "handlebars": "^4.0.5",
     "swagger-combine": "^0.18.1"
