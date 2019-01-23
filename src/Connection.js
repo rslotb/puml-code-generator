@@ -1,3 +1,4 @@
+var Association = require ('./Association');
 
 module.exports = (function () {
 
@@ -25,6 +26,11 @@ module.exports = (function () {
 
   Connection.prototype.getLabel = function () {
       return this.label;
+  }
+
+  Connection.prototype.isDirected = function () {
+
+    return this.connector instanceof Association && this.connector.isDirected();
   }
 
   return Connection;

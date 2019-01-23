@@ -1,9 +1,19 @@
 
 module.exports = (function () {
 
-  var Association = function () {
-  };
+    var Association = function (isDirected,isLeft) {
 
- return Association;
 
+        this.directed = isDirected;
+        this.left = isLeft;
+    };
+
+    Association.prototype.isDirected = function () {
+        return this.directed;
+    };
+
+    Association.prototype.isLeft = function () {
+        return this.left;
+    };
+    return Association;
 })();

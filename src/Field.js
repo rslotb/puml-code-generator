@@ -8,6 +8,7 @@ module.exports = (function () {
     this.sFieldName = fieldName;
     this.sConstraint = constraint;
     this.note = null;
+    this.sIsEnum = false;
   }
 
   Field.prototype.getAccessType = function () {
@@ -36,6 +37,11 @@ module.exports = (function () {
   Field.prototype.setNote = function (note) {
       this.note = note;
   }
+
+  Field.prototype.isEnum = function () {
+    return this.sIsEnum;
+  }
+
 
 
   return Field;

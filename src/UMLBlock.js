@@ -29,6 +29,10 @@ module.exports = (function () {
     this.populateGlobals(this);
     this.connectNotes();
     this.setupConnections();
+    this.setupFieldTypes();
+
+    this.properties = {};
+    //this.properties.package = 'core';
   }
 
   UMLBlock.prototype.getClasses = function () {
@@ -43,9 +47,10 @@ module.exports = (function () {
     return this.aItems;
   };
 
+
   UMLBlock.prototype.setupConnections = function () {
     let t= this;
-    this.aConnections.forEach(function (element){ t.setupConnection(element)} );
+    this.aConnections.forEach(function (element){ t.setupConnection(element) });
     // find connectionEnds that point to the same class, and set the isDuplicate flag on
     this.aClasses.forEach(
         function (element) {
@@ -95,15 +100,46 @@ module.exports = (function () {
       }
   }
 
+
+
+
+  UMLBlock.qualifiedclassName = /^([A-Za-z0-9]+)::([A-Za-z0-9]+)$/;
+
+  UMLBlock.makeExternalClass = function (string) {
+
+    var parsed = UMLBlock.qualifiedclassName.exec(string);
+    var class1 = new Class(parsed[2]);
+    class1.setNamespace(parsed[1]);
+    return class1;
+  }
+
   UMLBlock.prototype.setupConnection = function (connection) {
     var cLeft = null;
     var cRight = null;
     if (connection.connector instanceof Dependency) {
       return;
     }
+    /*
+    if (UMLBlock.qualifiedclassName.test(connection.leftObject)) {
+      // Right now, we are specifically coding this for external references not part of the file.
+      cLeft = UMLBlock.makeExternalClass(connection.leftObject);
+    }
+    if (UMLBlock.qualifiedclassName.test(connection.rightObject)) {
+      // Right now, we are specifically coding this for external references not part of the file.
+      cRight = UMLBlock.makeExternalClass(connection.rightObject);
+    }
+    */
+    if (UMLBlock.qualifiedclassName.test(connection.leftObject)) {
+      connection.leftObject = connection.leftObject.replace(/::/g, '.');
+    }
+    if (UMLBlock.qualifiedclassName.test(connection.rightObject)) {
+      connection.rightObject = connection.rightObject.replace(/::/g,'.');
+    }
 
     for (var i = 0, length = this.aClasses.length; i < length; i++) {
-    
+
+      //TODO: what class sperator to is used is configurable. But if it is "." is really annoying. (Which the code below is for
+
       if (connection.leftObject.indexOf(".") !== -1) {
         if (connection.leftObject.indexOf(".") === 0) {
           if (this.aClasses[i].getNamespace()===null && this.aClasses[i].getName() === connection.leftObject.substring(1)) {
@@ -147,16 +183,56 @@ module.exports = (function () {
       }
     }
     else {
-      var connectionEndLeft = new ConnectionEnd(cLeft,connection.leftCar,connection,true);
-      var connectionEndRight = new ConnectionEnd(cRight,connection.rightCar,connection,false);
+      var connectionEndLeft = new ConnectionEnd(cLeft,connection.leftCar,connection,true,true);
+      var connectionEndRight = new ConnectionEnd(cRight,connection.rightCar,connection,false,true);
       connection.leftObject = cLeft;
       connection.rightObject = cRight;
+      connectionEndLeft.otherSide = connectionEndRight;
+      connectionEndRight.otherSide = connectionEndLeft;
       // reversed, because when parsing the object, you typically need to know about the other side
       // of the relation.
       cLeft.getConnections().push(connectionEndRight);
       cRight.getConnections().push(connectionEndLeft);
     }
   }
+
+  UMLBlock.standardTypes = ['string','boolean','integer','float','date','datetime','uri','email'];
+
+  UMLBlock.prototype.setupFieldTypes = function() {
+
+
+    let t = this;
+
+    this.aClasses.forEach(function (class1) {
+
+      if (class1.getExtends() ) {
+        class1.baseClass = t.aClasses.find(function( class2 ) { return class2.getName() == class1.getExtends()});
+      }
+
+      class1.getFields().forEach( function(field) {
+        if (!UMLBlock.standardTypes.includes(field.getReturnType())) {
+
+          var type = t.aClasses.find(function( class2 ) { return class2.getName() == field.getReturnType()});
+          if (!type) {
+
+            type = t.aEnumerations.find(function( enum1 ) { return enum1.getName() == field.getReturnType()});
+            field.sIsEnum = (type != null);
+            }
+
+          }
+          field.type = type;
+          /*
+            TODO: currently, a class might be in another package, which means we cannot associate it right now.
+          if (!type) {
+            throw "Unable to find type with name: " + field.getReturnType() + " when trying to attach note";
+          }
+          */
+      })
+    });
+  }
+
+
+
   
   UMLBlock.prototype.populateGlobals = function (item) {
   

@@ -27,6 +27,8 @@ var options = {
   output: null
 };
 
+options.properties = {};
+
 var supported_languages = ["coffeescript", "csharp", "ecmascript5", "ecmascript6", "java", "php", "ruby", "typescript","jsonapi-schema","python-django"];
 
 var args = process.argv.slice(2); // Trim "node" and the script path.
@@ -96,6 +98,20 @@ function getArguments() {
             abort ("template file: " + args[0] + " not found.");
         }
         options.template = args[0];
+        break;
+      case "-p":
+      case "-property":
+        nextArg();
+        if (args.length === 0) {
+             abort("No property after -p/--property option.");
+        }
+        let parsed = /^(\w+)=(\S+)$/.exec(args[0]);
+        if (parsed[0]) {
+            options.properties[parsed[1]] = parsed[2];
+        }
+        else {
+            abort("Invalid property: " +args[0]);
+        }
         break;
       case "--show-languages":
         printLanguages();
@@ -283,6 +299,9 @@ function processInputFile(config, data) {
   }
   if (config.template) {
       fs.readFile("./" + config.template + ".hbs", {encoding: "UTF-8"}, function (err, data) {
+          aUMLBlocks.forEach(function(block){block.properties=options.properties })
+          //aUMLBlocks.properties = options.properties;
+          //aUMLBlocks.properties.package = 'core';
           if (err === null) {
 
               //config.helpers = "./" + config.template;
@@ -324,7 +343,13 @@ function processTemplateFile(config, templateData, dictionary) {
         }
     }
 
-//--- Django
+    hbs.registerHelper('isType',function (type){
+
+        const type2 = this.getReturnType();
+
+        return type2 == type;
+
+    });
 
 
 
@@ -335,7 +360,8 @@ function processTemplateFile(config, templateData, dictionary) {
 
   dictionary.forEach(function (element) {
   //  element.getClasses().forEach(function (element) {
-      output += template(element) + os.EOL + os.EOL;
+      //RS: Python is very peculiar about blank lines, and it does not like the second EOL that was added here.
+      output += template(element) + os.EOL; // + os.EOL;
   //  })
   })
 

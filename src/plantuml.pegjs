@@ -71,7 +71,9 @@ extends
   = "<|" associateconnector { var Extension = require("./Extension"); return new Extension(true) }
   / associateconnector "|>" { var Extension = require("./Extension"); return new Extension(false) }
 
-associates = associateconnector { var Association = require("./Association"); return new Association() }
+associates = [<] associateconnector { var Association = require("./Association"); return new Association(true,true) }
+  / associateconnector [>] { var Association = require("./Association"); return new Association(true,false) }
+  / associateconnector { var Association = require("./Association"); return new Association(false) }
 
 depends = dependencyconnector {  var Dependency = require("./Dependency"); return new Dependency() }
 
@@ -198,7 +200,7 @@ togetherdeclaration
 constraint
   = [{] char:constrchar+ [}] {return char.join("") }
 constrchar
-  = [^}]
-  / [}]![ \t\r\n]
+  = char:[^}] { return char }
+  / char:[}]![ \t\r\n] { return '\u007d'; }
 
 

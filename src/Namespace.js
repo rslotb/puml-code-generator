@@ -4,6 +4,7 @@ module.exports = (function () {
   var Class = require("./Class");
   var AbstractClass = require("./AbstractClass");
   var Connection = require("./Connection");
+  var Enumeration = require("./Enumeration");
 
   var Namespace = function (namespaceName, fileLines) {
     this.namespaceName = namespaceName;
@@ -42,7 +43,7 @@ module.exports = (function () {
     for (var i = 0, length = this.aItems.length; i < length; i++) {
       if (this.aItems[i] instanceof Namespace) {
         this.aItems[i].setNamespace(this);
-      } else if (this.aItems[i] instanceof Class || this.aItems[i] instanceof AbstractClass) {
+      } else if (this.aItems[i] instanceof Class || this.aItems[i] instanceof AbstractClass || this.aItems[i] instanceof Enumeration) {
         this.aItems[i].setNamespace(this);
       } else if (this.aItems[i] instanceof Connection) {
         this.aItems[i].setNamespace(this);
