@@ -117,12 +117,6 @@ module.exports.rangeConstraint = function (constraint){
         }
         return returnValue;
     };
-
-module.exports.cleanString = function (string){
-
-        return  string.replace(/\s+/g," ").trim();
-    };
-
 module.exports.isFieldType = function (){
 
         return this.getStereotype() == 'type' && this.getFields().length == 1 && this.getConnections().length == 0;
