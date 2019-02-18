@@ -11,23 +11,23 @@ module.exports = (function () {
     this.aItems = fileLines;
     this.nNamespace = null;
     this.init();
-  }
+  };
   
   Namespace.prototype.getName = function () {
     return this.namespaceName;
-  }
+  };
   
   Namespace.prototype.getItems = function () {
     return this.aItems;
-  }
+  };
 
   Namespace.prototype.setNamespace = function (namespace) {
     this.nNamespace = namespace;
-  }
+  };
 
   Namespace.prototype.getNamespace = function () {
     return this.nNamespace;
-  }
+  };
   
   Namespace.prototype.getFullName = function () {
     var aFull = [this.getName()];
@@ -37,7 +37,15 @@ module.exports = (function () {
       nSpace = nSpace.getNamespace();
     }
     return aFull.join(".");
-  }
+  };
+
+  Namespace.prototype.getClasses = function () {
+    return this.aItems.filter(function(element){ return (element instanceof Class) || (element instanceof AbstractClass) });
+  };
+
+  Namespace.prototype.getEnumerations = function () {
+    return this.aItems.filter(function(element){ return (element instanceof Enumeration) });
+  };
 
   Namespace.prototype.init = function () {
     for (var i = 0, length = this.aItems.length; i < length; i++) {
@@ -49,8 +57,8 @@ module.exports = (function () {
         this.aItems[i].setNamespace(this);
       }
     }
-  }
+  };
 
   return Namespace;
 
-})()
+})();

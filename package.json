@@ -1,8 +1,8 @@
 {
   "name": "plantcode-rs",
   "version": "0.5.0-0",
-  "description": "PlantUML to class file generator.",
-  "author": "Brian Folts <brian.folts@gmail.com>",
+  "description": "PlantUML generator to various formats. Originally by Brain Folts",
+  "author": "Remco Slotboom <remco@azomodeus.com>",
   "main": "plantcode",
   "scripts": {
     "test": "node node_modules/.bin/istanbul cover tests/integration.js",
@@ -20,5 +20,6 @@
   "engines": {
     "node": ">= 0.8"
   },
-  "license": "(MIT OR Apache-2.0)"
+  "license": "(MIT OR Apache-2.0)",
+  "repository": "github:rslotb/puml-code-generator"
 }

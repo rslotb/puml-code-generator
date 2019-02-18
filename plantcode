@@ -42,7 +42,7 @@ if (args.length === 0) {
 function printLanguages() {
   supported_languages.forEach(function (item) {
     console.log(item);
-  })
+  });
   exitSuccess();
 }
 
@@ -53,14 +53,23 @@ function printUsage() {
   console.log("");
   console.log("Options:");
   console.log("  -l, --language <language>          name of the programming language");
-  console.log("                                     which the produced class files")
+  console.log("                                     which the produced class files");
   console.log("                                     will be written in");
+  console.log("  -t, --temaplate <name>             name of template(.hbs), on the current path");
+  console.log("                                     to use for generation. ");
+  console.log("                                     optionally put an equally named file, ending in .js");
+  console.log("                                     in the same place to supply the template with helper functions.");
+  console.log('  -c, --cardinalities                expect relation cardinalities in the from "n", "*", "n..m" or "n..*"');
+  console.log("                                     (with n/m non-negative integers). It will make 'isRequired' and");
+  console.log("                                     'isMultiple' flags available on ConnectionEnds. (\"*\"===\"0..*\"");
   console.log("  -o, --out <output_path>            the path to output the file(s) to");
   console.log("      --show-languages               displays all the current supported");
-  console.log("                                     programming languages for use")
+  console.log("                                     programming languages for use");
   console.log("                                     for with the language option");
   console.log("  -h, --help                         print help and exit");
-  exitSuccess();
+  console.log("  -d, --debug                        outputs the preproccessed, one file that is fed to the actual parser.");
+  console.log("                                     contains the line numbers most error messages refer to.");
+    exitSuccess();
 }
 
 function isValidLanguage(language) {
@@ -120,9 +129,16 @@ function getArguments() {
       case "--help":
         printUsage();
         break;
-      default:
+      case "-c":
+      case "--cardinalities":
+          options.cardinalities = true;
+        break;
+        default:
         abort("Invalid option " + args[0]);
         break;
+        case "-d":
+        case "--debug":
+          options.debug = true;
     }
     nextArg();
   }
@@ -181,14 +197,14 @@ function nextArg() {
   args.shift();
 }
 
-function processDefine (value, key, map) {
-
-
-
+function ammendUMLBlocks(aUMLBlocks) {
+    aUMLBlocks.forEach(function (block) {
+        block.properties = options.properties;
+        if (options.cardinalities) {
+            block.parseCardinalities();
+        }
+    })
 }
-
-
-//         data = data.replace(new RegExp(key, 'g'), value);
 
 function processInputFile(config, data) {
 
@@ -212,7 +228,7 @@ function processInputFile(config, data) {
 
         if (typeof block === "string" && processCode) {
 
-            defines.forEach(function(value, key, map){
+            defines.forEach(function(value, key){
 
                 block = block.replace(new RegExp('(^|\\s)'+key+'(?=\\s)', 'g')," " + value);
             });
@@ -262,46 +278,19 @@ function processInputFile(config, data) {
           }
         }
     }
-    // var newData = "";
-    // var defineIndex = data.search('!define');
-    //
-    // while (defineIndex > 0) {
-    //
-    //     newData += data.substring(0, defineIndex);
-    //
-    //     var define = data.substring(defineIndex + 8); // for now assuming a single space. Let's not be annoying, shall we?
-    //
-    //     var keyEnd = define.search(/\s/);
-    //     var key = define.substring(0, keyEnd);
-    //     var valueEnd = define.search('\n');
-    //     var value = define.substring(keyEnd + 1, valueEnd).trim();
-    //
-    //     if (value.length > 0) {
-    //         console.error('key:' + key);
-    //         console.error('value:' + value);
-    //
-    //         data = data.substring(defineIndex + valueEnd + 9);
-    //
-
-    //     }
-    //     else {
-    //       newData += data.substring(0,defineIndex + valueEnd+9);
-    //       data = data.substring(defineIndex + valueEnd+9);
-    //     }
-    //     defineIndex = data.search('!define');
-    // }
-
-    //data = newData + data;
-    console.error(debugData);
+    if (config.debug) {
+        console.error(debugData);
+    }
     var aUMLBlocks = parser.parse(processedData);
   } catch(e) {
     abort("Error parsing input file: ", config.input, e);
   }
-  if (config.template) {
+
+  ammendUMLBlocks(aUMLBlocks);
+
+    if (config.template) {
       fs.readFile("./" + config.template + ".hbs", {encoding: "UTF-8"}, function (err, data) {
-          aUMLBlocks.forEach(function(block){block.properties=options.properties })
-          //aUMLBlocks.properties = options.properties;
-          //aUMLBlocks.properties.package = 'core';
+
           if (err === null) {
 
               //config.helpers = "./" + config.template;
@@ -351,10 +340,34 @@ function processTemplateFile(config, templateData, dictionary) {
 
     });
 
+    hbs.registerHelper('isAccessType',function (type){
+
+        return this.getAccessType() == type;
+
+    });
+
+    hbs.registerHelper('cleanString',function (string){
+
+        return  string?string.replace(/\s+/g," ").trim():null;
+    });
+
+    hbs.registerHelper('noQuotes',function (string){
+
+        return string?string.replace(/"/g,"").trim():null;
+    });
+
+    hbs.registerHelper('escapeBraces',function (string){
+
+        return string?string.replace(/[\[\]{}]/g,"\\$&").trim():null;
+    });
 
 
 
-  var template = hbs.compile(templateData);
+
+
+
+
+    var template = hbs.compile(templateData);
 
   var output = "";
 
@@ -363,7 +376,7 @@ function processTemplateFile(config, templateData, dictionary) {
       //RS: Python is very peculiar about blank lines, and it does not like the second EOL that was added here.
       output += template(element) + os.EOL; // + os.EOL;
   //  })
-  })
+  });
 
   if (config.output === null) {
     console.log(output);

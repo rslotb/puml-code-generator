@@ -9,6 +9,11 @@ module.exports = (function () {
         return this.bIsLeft;
   };
 
- return Composition;
+  Composition.prototype.isComposition = function () {
+        return true;
+  };
+
+
+    return Composition;
 
 })();

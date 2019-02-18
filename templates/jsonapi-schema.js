@@ -1,13 +1,14 @@
-module.exports.toPlural = function toPlural(string) {
+function toPlural(string) {
 
-        switch (string.slice(-1)) {
-            case "s":
-                return string + "es";
-            case "y":
+    switch (string.slice(-1)) {
+        case "s":
+            return string + "es";
+        case "y":
+            if (!/[aeou]y$/.test(string)) //maybuy is being annoying..
                 return string.slice(0,-1) + "ies";
-        }
-        return string + "s";
-    };
+    }
+    return string + "s";
+}
 
 module.exports.parseCardinality = function (connectionEnd) {
 
@@ -77,10 +78,13 @@ module.exports.isPrimitive =  function (){
 
         const type = this.getReturnType();
 
-        if (type == 'string' || type == 'integer' || type == 'float') {
+    switch (type) {
+        case 'string':
+        case 'integer':
+        case 'float':
             return true;
-        }
-        return false;
+    }
+    return false;
     };
 
 module.exports.isType = function (type){
@@ -93,7 +97,7 @@ module.exports.isType = function (type){
 
 module.exports.rangeConstraint = function (constraint){
 
-        let exp = /^(\[|<)((?:\d+(?:\.\d+)?)|oo)-((?:\d+(?:\.\d+)?)|oo)(\]|>)$/;
+        let exp = /^([[<])((?:\d+(?:\.\d+)?)|oo)-((?:\d+(?:\.\d+)?)|oo)([\]>])$/;
 
         if (!exp.test(constraint)) {
 
@@ -146,6 +150,6 @@ module.exports.getRelationName = function ( connectionEnd ){
             name = name[0].toLowerCase() + name.slice(1);
             // optionally make it plural.
             // TODO: someday, make a feature were users can submit their own plurals for weird cases or other languages.
-            return connectionEnd.isMultiple() ? jsonapi.toPlural(name) : name;
+            return connectionEnd.isMultiple() ? toPlural(name) : name;
         }
     };

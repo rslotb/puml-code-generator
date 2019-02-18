@@ -12,7 +12,7 @@ module.exports = (function () {
   var ConnectionEnd = require("./ConnectionEnd");
   var Dependency = require("./Dependency");
 
-  var util = require("util");
+  //var util = require("util");
 
   var UMLBlock = function (fileLines) {
 
@@ -33,18 +33,22 @@ module.exports = (function () {
 
     this.properties = {};
     //this.properties.package = 'core';
-  }
+  };
 
   UMLBlock.prototype.getClasses = function () {
     return this.aClasses;
-  }
+  };
 
   UMLBlock.prototype.getEnumerations = function () {
       return this.aEnumerations;
-  }
+  };
 
   UMLBlock.prototype.getItems = function () {
     return this.aItems;
+  };
+
+  UMLBlock.prototype.getNamespaces = function () {
+    return this.aNamespaces;
   };
 
 
@@ -76,7 +80,7 @@ module.exports = (function () {
             });
             if (cEnum) {
                 cEnum.setNote(note.getNote());
-                return;
+                continue;
             }
             else {
                 throw "Unable to find class with name: " + note.getClassName() + " when trying to attach note";
@@ -98,11 +102,17 @@ module.exports = (function () {
         }
 
       }
-  }
+  };
 
+  UMLBlock.prototype.parseCardinalities = function() {
 
-
-
+    this.aClasses.forEach(
+        function (element) {
+          element.connections.forEach(function(con) {
+            con.parseCardinality();
+          })
+      })
+  };
   UMLBlock.qualifiedclassName = /^([A-Za-z0-9]+)::([A-Za-z0-9]+)$/;
 
   UMLBlock.makeExternalClass = function (string) {
@@ -111,7 +121,7 @@ module.exports = (function () {
     var class1 = new Class(parsed[2]);
     class1.setNamespace(parsed[1]);
     return class1;
-  }
+  };
 
   UMLBlock.prototype.setupConnection = function (connection) {
     var cLeft = null;
@@ -185,6 +195,7 @@ module.exports = (function () {
     else {
       var connectionEndLeft = new ConnectionEnd(cLeft,connection.leftCar,connection,true,true);
       var connectionEndRight = new ConnectionEnd(cRight,connection.rightCar,connection,false,true);
+
       connection.leftObject = cLeft;
       connection.rightObject = cRight;
       connectionEndLeft.otherSide = connectionEndRight;
@@ -194,7 +205,7 @@ module.exports = (function () {
       cLeft.getConnections().push(connectionEndRight);
       cRight.getConnections().push(connectionEndLeft);
     }
-  }
+  };
 
   UMLBlock.standardTypes = ['string','boolean','integer','float','date','datetime','uri','email'];
 
@@ -229,18 +240,21 @@ module.exports = (function () {
           */
       })
     });
-  }
+  };
 
-
-
-  
   UMLBlock.prototype.populateGlobals = function (item) {
   
     var items = item.getItems();
   
     for (var i = 0, length = items.length; i < length; i++) {
       if (items[i] instanceof Namespace) {
-        this.aNamespaces.push(items[i]);
+        if (items[i].getName()) {
+          this.aNamespaces.push(items[i]);
+        }
+        else {
+          items.push(...items[i].getItems());
+          item.init();
+        }
         this.populateGlobals(items[i]);
       } else if (items[i] instanceof Class || items[i] instanceof AbstractClass) {
         this.aClasses.push(items[i]);
@@ -258,8 +272,8 @@ module.exports = (function () {
       }
     }
   
-  }
+  };
   
   return UMLBlock;
 
-})()
+})();
